@@ -1,0 +1,11 @@
+{
+  "most_faithful_method": null,
+  "most_stable_method": "counterfactual",
+  "most_computationally_expensive_method": "counterfactual",
+  "best_deletion_auc_method": "shap",
+  "best_insertion_auc_method": "lime",
+  "best_stability_corr_method": "counterfactual",
+  "best_stability_iou_method": "counterfactual",
+  "shap_reasonable_tradeoff": true,
+  "summary_text": "No single method dominated both faithfulness metrics; best deletion AUC: shap, best insertion AUC: lime.\ncounterfactual dominated the baseline stability metrics.\nMost computationally expensive method by mean runtime: counterfactual.\nSHAP was not Pareto-dominated under the baseline quality/cost metrics."
+}

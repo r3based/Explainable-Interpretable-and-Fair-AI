@@ -31,6 +31,17 @@ CIFAR10_TO_IMAGENET: dict[int, int] = {
 IMAGENET_TO_CIFAR10: dict[int, int] = {v: k for k, v in CIFAR10_TO_IMAGENET.items()}
 
 
+class _CIFAR10AnchorClassifier(nn.Module):
+    """Differentiable view of the shared ViT wrapper in CIFAR-10 logit space."""
+
+    def __init__(self, wrapper: "ViTWrapper"):
+        super().__init__()
+        self.wrapper = wrapper
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.wrapper.cifar10_logits(x)
+
+
 class ViTWrapper(nn.Module):
     """Thin wrapper around timm ViT-B/16 for the project pipeline.
 
@@ -66,12 +77,20 @@ class ViTWrapper(nn.Module):
     # ------------------------------------------------------------------
     # CIFAR-10-space helpers
     # ------------------------------------------------------------------
+    def cifar10_logits(self, x: torch.Tensor) -> torch.Tensor:
+        """Return (N, 10) anchor logits in CIFAR-10 class order."""
+        logits = self(x)
+        return logits[:, self._anchor_idx]
+
+    def cifar10_probabilities(self, x: torch.Tensor) -> torch.Tensor:
+        """Return (N, 10) softmax probabilities over CIFAR-10 anchor classes."""
+        anchor_logits = self.cifar10_logits(x)
+        return anchor_logits.softmax(dim=-1)
+
     def predict_proba(self, x: torch.Tensor) -> torch.Tensor:
         """Return (N, 10) softmax probabilities over CIFAR-10 anchor classes."""
         with torch.no_grad():
-            logits = self(x)                          # (N, 1000)
-        anchor_logits = logits[:, self._anchor_idx]   # (N, 10)
-        return anchor_logits.softmax(dim=-1)
+            return self.cifar10_probabilities(x)
 
     def predict(self, x: torch.Tensor) -> tuple[int, float]:
         """Return (cifar10_class_idx, confidence) for a single image (1, C, H, W)."""
@@ -88,3 +107,7 @@ class ViTWrapper(nn.Module):
         def _call(x: torch.Tensor) -> torch.Tensor:
             return self.predict_proba(x)
         return _call
+
+    def as_cifar10_classifier(self) -> nn.Module:
+        """Return a differentiable module that outputs CIFAR-10 anchor logits."""
+        return _CIFAR10AnchorClassifier(self)

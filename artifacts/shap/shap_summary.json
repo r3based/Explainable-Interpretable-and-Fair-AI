@@ -1,0 +1,101 @@
+{
+  "config": {
+    "data_dir": "data",
+    "output_dir": "artifacts/shap",
+    "device": "cpu",
+    "seed": 42,
+    "subset_size": 3,
+    "background_size": 32,
+    "background_strategy": "stratified",
+    "reference_manifest": null,
+    "nsamples": 128,
+    "batch_size": 8,
+    "reuse_reference_set": true
+  },
+  "reference_manifest_path": "artifacts\\reference_sets\\cifar10_train_stratified_32_seed42.json",
+  "reference_manifest": {
+    "dataset_split": "train",
+    "strategy": "stratified",
+    "background_size": 32,
+    "seed": 42,
+    "class_distribution": {
+      "airplane": 4,
+      "automobile": 4,
+      "bird": 3,
+      "cat": 3,
+      "deer": 3,
+      "dog": 3,
+      "frog": 3,
+      "horse": 3,
+      "ship": 3,
+      "truck": 3
+    }
+  },
+  "selected_indices": [
+    6545,
+    892,
+    7738
+  ],
+  "results": [
+    {
+      "index": 6545,
+      "true_class": "truck",
+      "pred_class": "truck",
+      "confidence": 0.9872633814811707,
+      "explained_class": "truck",
+      "runtime_seconds": 36.02607639999769,
+      "heatmap_path": "artifacts\\shap\\shap_00_truck_heatmap.npy",
+      "raw_values_path": "artifacts\\shap\\shap_00_truck_raw.npy",
+      "figure_path": "artifacts\\shap\\shap_00_truck.png",
+      "extra": {
+        "background_size": 32,
+        "nsamples": 128,
+        "batch_size": 8,
+        "local_smoothing": 0.0,
+        "seed": 42,
+        "device": "cpu",
+        "target_selection": "predicted"
+      }
+    },
+    {
+      "index": 892,
+      "true_class": "horse",
+      "pred_class": "horse",
+      "confidence": 0.9886427521705627,
+      "explained_class": "horse",
+      "runtime_seconds": 35.104922200000146,
+      "heatmap_path": "artifacts\\shap\\shap_01_horse_heatmap.npy",
+      "raw_values_path": "artifacts\\shap\\shap_01_horse_raw.npy",
+      "figure_path": "artifacts\\shap\\shap_01_horse.png",
+      "extra": {
+        "background_size": 32,
+        "nsamples": 128,
+        "batch_size": 8,
+        "local_smoothing": 0.0,
+        "seed": 42,
+        "device": "cpu",
+        "target_selection": "predicted"
+      }
+    },
+    {
+      "index": 7738,
+      "true_class": "bird",
+      "pred_class": "dog",
+      "confidence": 0.3543255031108856,
+      "explained_class": "dog",
+      "runtime_seconds": 35.00558280000405,
+      "heatmap_path": "artifacts\\shap\\shap_02_dog_heatmap.npy",
+      "raw_values_path": "artifacts\\shap\\shap_02_dog_raw.npy",
+      "figure_path": "artifacts\\shap\\shap_02_dog.png",
+      "extra": {
+        "background_size": 32,
+        "nsamples": 128,
+        "batch_size": 8,
+        "local_smoothing": 0.0,
+        "seed": 42,
+        "device": "cpu",
+        "target_selection": "predicted"
+      }
+    }
+  ]
+}

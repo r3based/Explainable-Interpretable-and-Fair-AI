@@ -1,0 +1,84 @@
+{
+  "config": {
+    "data_dir": "data",
+    "output_dir": "artifacts/eval/runtime",
+    "device": "cpu",
+    "seed": 42,
+    "subset_size": 3,
+    "background_size": 32,
+    "background_strategy": "stratified",
+    "reference_manifest": null,
+    "reuse_reference_set": true,
+    "methods": [
+      "lime",
+      "shap",
+      "counterfactual"
+    ],
+    "repeats": 1,
+    "warmup": 1,
+    "lime_samples": 200,
+    "lime_segments": 50,
+    "shap_nsamples": 64,
+    "shap_batch_size": 8,
+    "cf_steps": 80,
+    "cf_step_size": 0.03,
+    "cf_lambda_l2": 0.01,
+    "cf_lambda_tv": 0.0001
+  },
+  "selected_indices": [
+    6545,
+    892,
+    7738
+  ],
+  "reference_manifest_path": "artifacts\\reference_sets\\cifar10_train_stratified_32_seed42.json",
+  "methods": {
+    "lime": {
+      "method": "lime",
+      "device": "cpu",
+      "num_images": 3,
+      "per_image_runtime_sec": [
+        20.50854249999975,
+        20.491522900003474,
+        20.60926389999804
+      ],
+      "runtime_mean_sec": 20.536443100000422,
+      "runtime_std_sec": 0.05195875531116508,
+      "runtime_median_sec": 20.50854249999975,
+      "peak_memory_mb": 0.0,
+      "benchmark_repeats": 1,
+      "warmup": 1
+    },
+    "shap": {
+      "method": "shap",
+      "device": "cpu",
+      "num_images": 3,
+      "per_image_runtime_sec": [
+        18.87608100000216,
+        18.910219799996412,
+        18.974849700003688
+      ],
+      "runtime_mean_sec": 18.920383500000753,
+      "runtime_std_sec": 0.04095761730807157,
+      "runtime_median_sec": 18.910219799996412,
+      "peak_memory_mb": 0.0,
+      "benchmark_repeats": 1,
+      "warmup": 1
+    },
+    "counterfactual": {
+      "method": "counterfactual",
+      "device": "cpu",
+      "num_images": 3,
+      "per_image_runtime_sec": [
+        24.49767189999693,
+        24.59015769999678,
+        24.41125689999899
+      ],
+      "runtime_mean_sec": 24.499695499997568,
+      "runtime_std_sec": 0.07304996134009632,
+      "runtime_median_sec": 24.49767189999693,
+      "peak_memory_mb": 0.0,
+      "benchmark_repeats": 1,
+      "warmup": 1
+    }
+  }
+}
