@@ -188,8 +188,8 @@ class LIMEImageExplainer:
         dot   = masks @ reference                           # (N,)
         norms = np.linalg.norm(masks, axis=1) * np.linalg.norm(reference)
         norms = np.where(norms == 0, 1e-8, norms)
-        cosine_sim = dot / norms
-        return np.sqrt(2.0 * (1.0 - cosine_sim))           # cosine distance
+        cosine_sim = (dot / norms).clip(-1.0, 1.0)          # clip avoids sqrt(negative) from float error
+        return np.sqrt(2.0 * (1.0 - cosine_sim))
 
     def _kernel(self, distances: np.ndarray) -> np.ndarray:
         return np.exp(-(distances ** 2) / (self.kernel_width ** 2))
