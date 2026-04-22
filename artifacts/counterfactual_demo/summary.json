@@ -1,0 +1,21 @@
+{
+  "original_class": 0,
+  "final_class": 1,
+  "success": true,
+  "steps_run": 25,
+  "original_confidence": 0.6456562876701355,
+  "final_confidence": 0.5410978198051453,
+  "perturbation_l2": 20.067241668701172,
+  "perturbation_linf": 0.36205732822418213,
+  "config": {
+    "steps": 200,
+    "step_size": 0.05,
+    "lambda_l2": 0.01,
+    "lambda_tv": 0.0001,
+    "confidence_margin": 0.0,
+    "clamp_min": 0.0,
+    "clamp_max": 1.0,
+    "target_mode": "untargeted",
+    "log_every": 25
+  }
+}
