@@ -1,0 +1,7 @@
+services:
+  lime:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+    command: python run_lime.py --n-images 10 --n-samples 1000 --n-segments 50
