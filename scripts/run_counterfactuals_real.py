@@ -12,7 +12,7 @@ from counterfactuals import (
     save_counterfactual_panel,
 )
 from data.cifar10 import get_cifar10, denormalize
-from model.resnet import load_model
+from model.vit_cf_adapter import ViTCounterfactualAdapter
 from utils import set_seed
 
 
@@ -50,7 +50,7 @@ def main() -> None:
     save_root.mkdir(parents=True, exist_ok=True)
 
     dataset = get_cifar10(root=args.root, train=args.train)
-    model = load_model(device)
+    model = ViTCounterfactualAdapter(device)
     generator = GradientCounterfactualGenerator(model)
 
     config = CounterfactualConfig(
@@ -69,22 +69,14 @@ def main() -> None:
         result = generator.generate(image, config=config)
 
         # если image нормализован под ViT/модель, для картинки лучше денормализовать
-        try:
-            original_vis = denormalize(result.original_image.clone())
-            counterfactual_vis = denormalize(result.counterfactual_image.clone())
-        except Exception:
-            original_vis = tensor_to_saveable_image(result.original_image.clone())
-            counterfactual_vis = tensor_to_saveable_image(result.counterfactual_image.clone())
-
         sample_dir = save_root / f"sample_{idx:04d}"
         sample_dir.mkdir(parents=True, exist_ok=True)
 
         panel_path = sample_dir / "counterfactual_panel.png"
         save_counterfactual_panel(
-            original_image=original_vis,
-            counterfactual_image=counterfactual_vis,
-            perturbation=result.perturbation,
-            save_path=str(panel_path),
+            result,
+            str(panel_path),
+            title=f"index={idx}, true_label={label}",
         )
 
         summary = {
