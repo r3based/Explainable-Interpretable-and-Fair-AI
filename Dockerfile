@@ -2,11 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir \
-    torch torchvision timm \
-    scikit-image scikit-learn \
-    matplotlib numpy pillow
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY src/ src/
+COPY scripts/ scripts/
 
 ENV PYTHONPATH=/app
+ENV HF_HOME=/app/cache/huggingface

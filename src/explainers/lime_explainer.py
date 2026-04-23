@@ -21,7 +21,7 @@ from PIL import Image
 from skimage.segmentation import slic
 from sklearn.linear_model import Ridge
 
-from src.data.cifar10 import VIT_TRANSFORM, _VIT_MEAN, _VIT_STD
+from src.data.cifar10 import VIT_TRANSFORM
 
 
 @dataclass

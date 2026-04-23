@@ -1,88 +1,118 @@
+"""Gradient-based counterfactual explanations for ViT-B/16 on CIFAR-10.
+
+Usage:
+    python scripts/run_counterfactuals.py [--num-samples 5] [--save-dir artifacts/counterfactuals]
+                                          [--steps 200] [--seed 42]
+"""
+
 from __future__ import annotations
 
 import argparse
 import json
 from pathlib import Path
-import sys
 
 import torch
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "src"
-sys.path.insert(0, str(SRC))
-
-from counterfactuals import CounterfactualConfig, GradientCounterfactualGenerator, save_counterfactual_panel
-from utils import set_seed
-
-
-class ToyBrightnessClassifier(torch.nn.Module):
-    """A tiny deterministic image classifier used for sanity checks.
-
-    class 0: dark image
-    class 1: bright image
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.dummy = torch.nn.Parameter(torch.zeros(1))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        mean_intensity = x.mean(dim=(1, 2, 3))
-        logits = torch.stack([0.5 - mean_intensity, mean_intensity - 0.5], dim=1)
-        return logits
+from src.counterfactuals import (
+    CounterfactualConfig,
+    GradientCounterfactualGenerator,
+    save_counterfactual_panel,
+)
+from src.data.cifar10 import get_cifar10
+from src.model.vit_cf_adapter import ViTCounterfactualAdapter
+from src.utils import set_seed
 
 
-def build_demo_image(size: int = 32, value: float = 0.2) -> torch.Tensor:
-    return torch.full((1, 3, size, size), fill_value=value, dtype=torch.float32)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Counterfactual explanations for ViT on CIFAR-10")
+    parser.add_argument("--root",         type=str,   default="./data")
+    parser.add_argument("--train",        action="store_true")
+    parser.add_argument("--start-index",  type=int,   default=0)
+    parser.add_argument("--num-samples",  type=int,   default=5)
+    parser.add_argument("--save-dir",     type=str,   default="artifacts/counterfactuals")
+    parser.add_argument("--steps",        type=int,   default=200)
+    parser.add_argument("--step-size",    type=float, default=0.05)
+    parser.add_argument("--lambda-l2",    type=float, default=0.01)
+    parser.add_argument("--lambda-tv",    type=float, default=0.001)
+    parser.add_argument("--seed",         type=int,   default=42)
+    return parser.parse_args()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output-dir", type=str, default=str(ROOT / "artifacts" / "counterfactual_demo"))
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--steps", type=int, default=200)
-    parser.add_argument("--step-size", type=float, default=0.05)
-    parser.add_argument("--lambda-l2", type=float, default=1e-2)
-    parser.add_argument("--lambda-tv", type=float, default=1e-4)
-    parser.add_argument("--target-class", type=int, default=None)
-    args = parser.parse_args()
-
+    args = parse_args()
     set_seed(args.seed)
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
 
-    model = ToyBrightnessClassifier().eval()
-    image = build_demo_image()
+    device    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    save_root = Path(args.save_dir)
+    save_root.mkdir(parents=True, exist_ok=True)
+
+    dataset   = get_cifar10(root=args.root, train=args.train)
+    model     = ViTCounterfactualAdapter(device)
+    generator = GradientCounterfactualGenerator(model)
 
     config = CounterfactualConfig(
         steps=args.steps,
         step_size=args.step_size,
         lambda_l2=args.lambda_l2,
         lambda_tv=args.lambda_tv,
-        target_mode="untargeted" if args.target_class is None else "targeted",
     )
 
-    generator = GradientCounterfactualGenerator(model)
-    result = generator.generate(image, target_class=args.target_class, config=config)
+    all_results: list[dict] = []
 
-    save_counterfactual_panel(result, output_dir / "counterfactual_panel.png", title="Toy counterfactual sanity check")
+    for idx in range(args.start_index, args.start_index + args.num_samples):
+        image, label = dataset[idx]
+        image  = image.unsqueeze(0).to(device)
+        result = generator.generate(image, config=config)
 
-    summary = {
-        "original_class": result.original_class,
-        "final_class": result.final_class,
-        "success": result.success,
-        "steps_run": result.steps_run,
-        "original_confidence": result.original_confidence,
-        "final_confidence": result.final_confidence,
-        "perturbation_l2": result.perturbation_l2,
-        "perturbation_linf": result.perturbation_linf,
-        "config": result.config,
+        sample_dir = save_root / f"sample_{idx:04d}"
+        sample_dir.mkdir(parents=True, exist_ok=True)
+
+        panel_path = sample_dir / "counterfactual_panel.png"
+        save_counterfactual_panel(
+            result,
+            str(panel_path),
+            title=f"index={idx}, true_label={label}",
+        )
+
+        record = {
+            "index":                int(idx),
+            "true_label":           int(label),
+            "original_class":       int(result.original_class),
+            "final_class":          int(result.final_class),
+            "success":              bool(result.success),
+            "steps_run":            int(result.steps_run),
+            "original_confidence":  float(result.original_confidence),
+            "final_confidence":     float(result.final_confidence),
+            "perturbation_l2":      float(result.perturbation_l2),
+            "perturbation_linf":    float(result.perturbation_linf),
+            "panel_path":           str(panel_path),
+            "config":               result.config,
+        }
+        with open(sample_dir / "summary.json", "w", encoding="utf-8") as f:
+            json.dump(record, f, indent=2)
+
+        all_results.append(record)
+        print(
+            f"[{idx}] success={record['success']}  "
+            f"{record['original_class']} → {record['final_class']}  "
+            f"L2={record['perturbation_l2']:.4f}  "
+            f"Linf={record['perturbation_linf']:.4f}"
+        )
+
+    n = max(len(all_results), 1)
+    aggregate = {
+        "num_samples":   len(all_results),
+        "success_rate":  sum(int(r["success"]) for r in all_results) / n,
+        "avg_l2":        sum(r["perturbation_l2"]   for r in all_results) / n,
+        "avg_linf":      sum(r["perturbation_linf"] for r in all_results) / n,
+        "avg_steps_run": sum(r["steps_run"]         for r in all_results) / n,
+        "results":       all_results,
     }
-    with open(output_dir / "summary.json", "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+    with open(save_root / "aggregate_summary.json", "w", encoding="utf-8") as f:
+        json.dump(aggregate, f, indent=2)
 
-    print(json.dumps(summary, indent=2))
-    print(f"Saved artifacts to: {output_dir}")
+    print("\nAggregate:")
+    print(json.dumps({k: v for k, v in aggregate.items() if k != "results"}, indent=2))
 
 
 if __name__ == "__main__":

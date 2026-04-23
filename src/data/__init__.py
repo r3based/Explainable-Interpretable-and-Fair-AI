@@ -1,4 +1,13 @@
-from .cifar10 import CIFAR10_CLASSES, VIT_TRANSFORM, VIT_TRANSFORM_UNNORM, denormalize, get_cifar10, get_loader
+from .cifar10 import (
+    CIFAR10_CLASSES,
+    VIT_MEAN,
+    VIT_STD,
+    VIT_TRANSFORM,
+    VIT_TRANSFORM_UNNORM,
+    denormalize,
+    get_cifar10,
+    get_loader,
+)
 from .reference_set import (
     DEFAULT_REFERENCE_DIR,
     build_reference_set,
@@ -11,6 +20,8 @@ from .reference_set import (
 
 __all__ = [
     "CIFAR10_CLASSES",
+    "VIT_MEAN",
+    "VIT_STD",
     "VIT_TRANSFORM",
     "VIT_TRANSFORM_UNNORM",
     "denormalize",

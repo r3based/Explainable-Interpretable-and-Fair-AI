@@ -3,13 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
 
 from src.data import CIFAR10_CLASSES, DEFAULT_REFERENCE_DIR, get_cifar10, load_or_build_reference_set, summarize_reference_set
 from src.explainers.shap_explainer import SHAPImageExplainer
@@ -21,7 +17,7 @@ from src.visualization.heatmap import overlay_heatmap, tensor_to_numpy
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run SHAP explanations for the ViT CIFAR-10 pipeline.")
     parser.add_argument("--data-dir", type=str, default="data")
-    parser.add_argument("--output-dir", type=str, default=str(ROOT / "artifacts" / "shap"))
+    parser.add_argument("--output-dir", type=str, default="artifacts/shap")
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--subset-size", type=int, default=5)

@@ -3,17 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import sys
 
 import numpy as np
 import torch
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
 from src.counterfactuals import CounterfactualConfig, generate_counterfactual_for_normalized_input
 from src.data import DEFAULT_REFERENCE_DIR, get_cifar10, load_or_build_reference_set
-from src.data.cifar10 import _VIT_MEAN, _VIT_STD
+from src.data.cifar10 import VIT_MEAN, VIT_STD
 from src.evaluation.runtime import benchmark_all_methods
 from src.explainers.lime_explainer import LIMEImageExplainer
 from src.explainers.shap_explainer import SHAPImageExplainer
@@ -25,7 +21,7 @@ from src.visualization.heatmap import tensor_to_numpy
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark explanation runtime across methods.")
     parser.add_argument("--data-dir", type=str, default="data")
-    parser.add_argument("--output-dir", type=str, default=str(ROOT / "artifacts" / "eval" / "runtime"))
+    parser.add_argument("--output-dir", type=str, default="artifacts/eval/runtime")
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--subset-size", type=int, default=3)
@@ -61,8 +57,8 @@ def _counterfactual_callable(model: ViTWrapper, image_tensor: torch.Tensor, args
         lambda_tv=args.cf_lambda_tv,
         target_mode="untargeted",
     )
-    mean = torch.tensor(_VIT_MEAN, dtype=image_tensor.dtype)
-    std = torch.tensor(_VIT_STD, dtype=image_tensor.dtype)
+    mean = torch.tensor(VIT_MEAN, dtype=image_tensor.dtype)
+    std  = torch.tensor(VIT_STD,  dtype=image_tensor.dtype)
     return lambda: generate_counterfactual_for_normalized_input(
         model=model.as_cifar10_classifier(),
         normalized_image=image_tensor.unsqueeze(0),

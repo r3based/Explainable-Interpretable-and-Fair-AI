@@ -1,7 +1,91 @@
+x-base: &base
+  build: .
+  volumes:
+    - ./data:/app/data:ro
+    - ./artifacts:/app/artifacts
+    - ./cache:/app/cache
+
 services:
+
+  # ── Explanation pipelines ────────────────────────────────────────────
   lime:
-    build: .
-    volumes:
-      - ./data:/app/data
-      - ./outputs:/app/outputs
-    command: python run_lime.py --n-images 10 --n-samples 1000 --n-segments 50
+    <<: *base
+    command: >
+      python scripts/run_lime.py
+        --data-dir data
+        --output-dir artifacts/lime
+        --n-images 10
+        --n-samples 1000
+        --n-segments 50
+        --seed 42
+
+  shap:
+    <<: *base
+    command: >
+      python scripts/run_shap.py
+        --data-dir data
+        --output-dir artifacts/shap
+        --subset-size 5
+        --background-size 32
+        --background-strategy stratified
+        --nsamples 128
+        --batch-size 8
+        --reuse-reference-set
+        --seed 42
+
+  counterfactuals:
+    <<: *base
+    command: >
+      python scripts/run_counterfactuals.py
+        --root data
+        --num-samples 5
+        --save-dir artifacts/counterfactuals
+        --steps 200
+        --step-size 0.05
+        --lambda-l2 0.01
+        --lambda-tv 0.001
+        --seed 42
+
+  # ── Evaluation ───────────────────────────────────────────────────────
+  eval-faithfulness:
+    <<: *base
+    command: >
+      python scripts/run_faithfulness_eval.py
+        --data-dir data
+        --output-dir artifacts/eval/faithfulness
+        --subset-size 3
+        --methods lime shap counterfactual
+        --reuse-reference-set
+        --seed 42
+
+  eval-stability:
+    <<: *base
+    command: >
+      python scripts/run_stability_eval.py
+        --data-dir data
+        --output-dir artifacts/eval/stability
+        --subset-size 3
+        --methods lime shap counterfactual
+        --reuse-reference-set
+        --seed 42
+
+  eval-runtime:
+    <<: *base
+    command: >
+      python scripts/run_runtime_eval.py
+        --data-dir data
+        --output-dir artifacts/eval/runtime
+        --subset-size 3
+        --methods lime shap counterfactual
+        --reuse-reference-set
+        --seed 42
+
+  # ── Report ───────────────────────────────────────────────────────────
+  report:
+    <<: *base
+    command: >
+      python scripts/build_report.py
+        --faithfulness-path artifacts/eval/faithfulness/faithfulness_metrics.json
+        --stability-path    artifacts/eval/stability/stability_metrics.json
+        --runtime-path      artifacts/eval/runtime/runtime_metrics.json
+        --output-dir        artifacts/reports

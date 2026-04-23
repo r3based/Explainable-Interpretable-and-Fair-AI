@@ -10,16 +10,15 @@ CIFAR10_CLASSES = [
 ]
 
 # ViT-B/16 pretrained on ImageNet expects 224×224 with these stats
-_VIT_MEAN = (0.5, 0.5, 0.5)
-_VIT_STD  = (0.5, 0.5, 0.5)
+VIT_MEAN = (0.5, 0.5, 0.5)
+VIT_STD  = (0.5, 0.5, 0.5)
 
 VIT_TRANSFORM = transforms.Compose([
     transforms.Resize(224),
     transforms.ToTensor(),
-    transforms.Normalize(mean=_VIT_MEAN, std=_VIT_STD),
+    transforms.Normalize(mean=VIT_MEAN, std=VIT_STD),
 ])
 
-# Same pipeline without normalization – needed by LIME to produce perturbed PIL images
 VIT_TRANSFORM_UNNORM = transforms.Compose([
     transforms.Resize(224),
     transforms.ToTensor(),
@@ -49,6 +48,6 @@ def get_loader(
 
 def denormalize(tensor: torch.Tensor) -> torch.Tensor:
     """Undo ViT normalization, return values in [0, 1]."""
-    mean = torch.tensor(_VIT_MEAN, device=tensor.device).view(3, 1, 1)
-    std  = torch.tensor(_VIT_STD,  device=tensor.device).view(3, 1, 1)
+    mean = torch.tensor(VIT_MEAN, device=tensor.device).view(3, 1, 1)
+    std  = torch.tensor(VIT_STD,  device=tensor.device).view(3, 1, 1)
     return (tensor * std + mean).clamp(0.0, 1.0)

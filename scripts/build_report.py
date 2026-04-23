@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-import sys
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
 
 from src.evaluation.comparison import (
     COST_COLUMNS,
@@ -25,19 +21,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--faithfulness-path",
         type=str,
-        default=str(ROOT / "artifacts" / "eval" / "faithfulness" / "faithfulness_metrics.json"),
+        default="artifacts/eval/faithfulness/faithfulness_metrics.json",
     )
     parser.add_argument(
         "--stability-path",
         type=str,
-        default=str(ROOT / "artifacts" / "eval" / "stability" / "stability_metrics.json"),
+        default="artifacts/eval/stability/stability_metrics.json",
     )
     parser.add_argument(
         "--runtime-path",
         type=str,
-        default=str(ROOT / "artifacts" / "eval" / "runtime" / "runtime_metrics.json"),
+        default="artifacts/eval/runtime/runtime_metrics.json",
     )
-    parser.add_argument("--output-dir", type=str, default=str(ROOT / "artifacts" / "reports"))
+    parser.add_argument("--output-dir", type=str, default="artifacts/reports")
     return parser.parse_args()
 
 
