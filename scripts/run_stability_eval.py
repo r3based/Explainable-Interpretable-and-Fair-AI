@@ -79,7 +79,7 @@ def _counterfactual_result(model, image_tensor: torch.Tensor, args: argparse.Nam
 
 def main() -> None:
     args = parse_args()
-    set_seed(args.seed)
+    set_seed(args.seed, deterministic=False)
     print(
         f"Running stability eval: model={args.model_kind}, methods={args.methods}, "
         f"subset_size={args.subset_size}, noise_repeats={args.noise_repeats}, "

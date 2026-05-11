@@ -62,7 +62,7 @@ def _save_overlay(image_tensor, heatmap: np.ndarray, class_name: str, save_path:
 
 def main() -> None:
     args = parse_args()
-    set_seed(args.seed)
+    set_seed(args.seed, deterministic=False)
     print(
         f"Running SHAP: model={args.model_kind}, subset_size={args.subset_size}, "
         f"background_size={args.background_size}, nsamples={args.nsamples}, device={args.device}",

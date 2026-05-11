@@ -77,7 +77,7 @@ def _counterfactual_callable(model, image_tensor: torch.Tensor, args: argparse.N
 
 def main() -> None:
     args = parse_args()
-    set_seed(args.seed)
+    set_seed(args.seed, deterministic=False)
     print(
         f"Running runtime eval: model={args.model_kind}, methods={args.methods}, "
         f"subset_size={args.subset_size}, repeats={args.repeats}, warmup={args.warmup}, device={args.device}",

@@ -83,7 +83,7 @@ def _counterfactual_heatmap(model, image_tensor: torch.Tensor, args: argparse.Na
 
 def main() -> None:
     args = parse_args()
-    set_seed(args.seed)
+    set_seed(args.seed, deterministic=False)
     print(
         f"Running faithfulness eval: model={args.model_kind}, methods={args.methods}, "
         f"subset_size={args.subset_size}, device={args.device}",
