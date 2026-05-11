@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-val-batches", type=int, default=None)
     parser.add_argument("--log-every", type=int, default=50)
     parser.add_argument("--output-dir", type=str, default="artifacts/training")
-    parser.add_argument("--checkpoint-dir", type=str, default="artifacts/checkpoints")
+    parser.add_argument("--checkpoint-dir", type=str, default="artifacts/model_weights")
     parser.add_argument("--run-name", type=str, default="finetuned_vit")
     return parser.parse_args()
 

@@ -2,6 +2,7 @@
 /data/
 outputs/
 artifacts/checkpoints/
+artifacts/model_weights/
 artifacts/training/
 
 # python cache

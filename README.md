@@ -27,20 +27,20 @@ python scripts/train_vit_cifar.py \
   --run-name finetuned_vit
 
 python scripts/train_robust_vit_cifar.py \
-  --device cuda --checkpoint artifacts/checkpoints/finetuned_vit_best.pt \
+  --device cuda --checkpoint artifacts/model_weights/finetuned_vit_best.pt \
   --epochs 5 --batch-size 32 --attack fgsm \
   --run-name robust_vit
 
 python scripts/evaluate_classifier.py \
-  --model-kind finetuned --checkpoint artifacts/checkpoints/finetuned_vit_best.pt \
+  --model-kind finetuned --checkpoint artifacts/model_weights/finetuned_vit_best.pt \
   --device cuda
 
 python scripts/run_counterfactual_robustness_eval.py \
-  --model-kind robust --checkpoint artifacts/checkpoints/robust_vit_best.pt \
+  --model-kind robust --checkpoint artifacts/model_weights/robust_vit_best.pt \
   --device cuda --subset-size 20
 
 python scripts/run_shap.py \
-  --model-kind robust --checkpoint artifacts/checkpoints/robust_vit_best.pt \
+  --model-kind robust --checkpoint artifacts/model_weights/robust_vit_best.pt \
   --device cuda --subset-size 5
 ```
 
