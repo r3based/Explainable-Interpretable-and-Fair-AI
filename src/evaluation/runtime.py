@@ -75,6 +75,7 @@ def benchmark_explainer(
     warmup: int = 1,
     device: str | torch.device | None = None,
     measure_peak_memory: bool = True,
+    log_progress: bool = False,
 ) -> dict[str, Any]:
     """Benchmark per-image explanation callables for one method."""
     if not callables:
@@ -84,7 +85,9 @@ def benchmark_explainer(
     peak_memory_mb = 0.0
     resolved_device = _resolve_device(device)
 
-    for callable_fn in callables:
+    for idx, callable_fn in enumerate(callables, start=1):
+        if log_progress:
+            print(f"runtime {method_name}: image {idx}/{len(callables)}", flush=True)
         result = measure_runtime(
             callable_fn,
             repeats=repeats,
@@ -94,6 +97,12 @@ def benchmark_explainer(
         )
         per_image_runtime_sec.append(float(result["runtime_mean_sec"]))
         peak_memory_mb = max(peak_memory_mb, float(result["peak_memory_mb"]))
+        if log_progress:
+            print(
+                f"runtime {method_name}: image {idx}/{len(callables)} done "
+                f"mean={result['runtime_mean_sec']:.2f}s",
+                flush=True,
+            )
 
     return {
         "method": method_name,
@@ -115,9 +124,12 @@ def benchmark_all_methods(
     warmup: int = 1,
     device: str | torch.device | None = None,
     measure_peak_memory: bool = True,
+    log_progress: bool = False,
 ) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for method_name, callables in method_callables.items():
+        if log_progress:
+            print(f"Starting runtime benchmark for {method_name} ({len(callables)} images)", flush=True)
         results.append(
             benchmark_explainer(
                 method_name=method_name,
@@ -126,6 +138,7 @@ def benchmark_all_methods(
                 warmup=warmup,
                 device=device,
                 measure_peak_memory=measure_peak_memory,
+                log_progress=log_progress,
             )
         )
     return results

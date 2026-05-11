@@ -33,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--model-name", type=str, default="vit_base_patch16_224")
     parser.add_argument("--allow-random-init", action="store_true")
+    parser.add_argument("--log-every", type=int, default=1)
     return parser.parse_args()
 
 
@@ -62,6 +63,11 @@ def _save_overlay(image_tensor, heatmap: np.ndarray, class_name: str, save_path:
 def main() -> None:
     args = parse_args()
     set_seed(args.seed)
+    print(
+        f"Running SHAP: model={args.model_kind}, subset_size={args.subset_size}, "
+        f"background_size={args.background_size}, nsamples={args.nsamples}, device={args.device}",
+        flush=True,
+    )
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -89,6 +95,7 @@ def main() -> None:
         seed=args.seed,
         reuse_existing=args.reuse_reference_set,
     )
+    print(f"Reference set ready: {manifest_path}", flush=True)
 
     explainer = SHAPImageExplainer(
         model=model,
@@ -102,6 +109,10 @@ def main() -> None:
     summary: list[dict[str, object]] = []
 
     for run_idx, dataset_index in enumerate(selected_indices):
+        print(
+            f"SHAP image {run_idx + 1}/{len(selected_indices)}: dataset_index={dataset_index}",
+            flush=True,
+        )
         image_tensor, true_label = dataset[dataset_index]
         prediction_idx, confidence = model.predict(image_tensor.unsqueeze(0))
         result = explainer.explain(
@@ -119,6 +130,11 @@ def main() -> None:
         if result.raw_values is not None:
             np.save(raw_values_path, result.raw_values)
         _save_overlay(image_tensor=image_tensor, heatmap=result.heatmap, class_name=class_name, save_path=figure_path)
+        print(
+            f"SHAP image {run_idx + 1}/{len(selected_indices)} done: "
+            f"class={class_name}, runtime={result.runtime_seconds:.2f}s, figure={figure_path}",
+            flush=True,
+        )
 
         summary.append(
             {
@@ -145,6 +161,7 @@ def main() -> None:
     }
     with open(output_dir / "shap_summary.json", "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
+    print(f"Saved SHAP summary to {output_dir / 'shap_summary.json'}", flush=True)
 
 
 if __name__ == "__main__":

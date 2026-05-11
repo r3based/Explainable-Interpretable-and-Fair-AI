@@ -33,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--attack-step-size", type=float, default=0.008)
     parser.add_argument("--attack-steps", type=int, default=4)
     parser.add_argument("--max-batches", type=int, default=None)
+    parser.add_argument("--log-every", type=int, default=10)
     return parser.parse_args()
 
 
@@ -70,16 +71,34 @@ def main() -> None:
     classifier.eval()
 
     amp = not args.no_amp
+    print(
+        f"Evaluating {args.model_kind} on {device}; "
+        f"batch_size={args.batch_size}, max_batches={args.max_batches}, attacks={args.attacks}",
+        flush=True,
+    )
+    print("Starting clean evaluation", flush=True)
     clean_metrics = evaluate_clean(
         model=classifier,
         loader=loader,
         device=device,
         amp=amp,
         max_batches=args.max_batches,
+        log_every=args.log_every,
+        phase_name="clean_eval",
+    )
+    print(
+        f"Finished clean evaluation: accuracy={clean_metrics['accuracy']:.4f}, "
+        f"loss={clean_metrics['loss']:.4f}",
+        flush=True,
     )
 
     attack_metrics = {}
     for attack_name in args.attacks:
+        print(
+            f"Starting {attack_name} evaluation "
+            f"(epsilon={args.epsilon}, steps={args.attack_steps}, step_size={args.attack_step_size})",
+            flush=True,
+        )
         attack_config = AdversarialAttackConfig(
             method=attack_name,
             epsilon=args.epsilon,
@@ -93,6 +112,13 @@ def main() -> None:
             attack_config=attack_config,
             amp=amp,
             max_batches=args.max_batches,
+            log_every=args.log_every,
+            phase_name=f"{attack_name}_eval",
+        )
+        print(
+            f"Finished {attack_name}: robust_accuracy={attack_metrics[attack_name]['robust_accuracy']:.4f}, "
+            f"attack_success_rate={attack_metrics[attack_name]['attack_success_rate']:.4f}",
+            flush=True,
         )
 
     payload = {
@@ -104,6 +130,7 @@ def main() -> None:
     output_path = output_dir / f"{args.model_kind}_classifier_metrics.json"
     with open(output_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
+    print(f"Saved classifier metrics to {output_path}", flush=True)
     print(json.dumps(payload, indent=2))
 
 

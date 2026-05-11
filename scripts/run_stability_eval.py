@@ -48,6 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--model-name", type=str, default="vit_base_patch16_224")
     parser.add_argument("--allow-random-init", action="store_true")
+    parser.add_argument("--log-every", type=int, default=1)
     return parser.parse_args()
 
 
@@ -79,6 +80,12 @@ def _counterfactual_result(model, image_tensor: torch.Tensor, args: argparse.Nam
 def main() -> None:
     args = parse_args()
     set_seed(args.seed)
+    print(
+        f"Running stability eval: model={args.model_kind}, methods={args.methods}, "
+        f"subset_size={args.subset_size}, noise_repeats={args.noise_repeats}, "
+        f"seed_variants={args.seed_variants}, device={args.device}",
+        flush=True,
+    )
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -113,7 +120,8 @@ def main() -> None:
     seed_list = [args.seed + offset for offset in range(args.seed_variants)]
     per_method: dict[str, list[dict[str, object]]] = {method: [] for method in args.methods}
 
-    for dataset_index in selected_indices:
+    for image_pos, dataset_index in enumerate(selected_indices, start=1):
+        print(f"Stability image {image_pos}/{len(selected_indices)}: dataset_index={dataset_index}", flush=True)
         image_tensor, _ = dataset[dataset_index]
         class_idx, _ = model.predict(image_tensor.unsqueeze(0))
         image_np = tensor_to_numpy(image_tensor)
@@ -159,6 +167,7 @@ def main() -> None:
             explainers["counterfactual"] = explain_counterfactual
 
         for method_name, explain_fn in explainers.items():
+            print(f"  {method_name}: noise stability", flush=True)
             noise_result = stability_under_noise(
                 image=image_tensor,
                 explain_fn=lambda img, fn=explain_fn: fn(img, args.seed),
@@ -167,6 +176,7 @@ def main() -> None:
                 seed=args.seed,
                 topk_fraction=args.topk_fraction,
             )
+            print(f"  {method_name}: seed variation stability", flush=True)
             seed_result = stability_under_seed_variation(
                 image=image_tensor,
                 explain_fn=explain_fn,
@@ -187,6 +197,11 @@ def main() -> None:
             method_dir.mkdir(parents=True, exist_ok=True)
             with open(method_dir / f"image_{int(dataset_index):05d}.json", "w", encoding="utf-8") as handle:
                 json.dump(record, handle, indent=2)
+            print(
+                f"  {method_name} done: corr={combined['correlation_mean']:.4f}, "
+                f"topk_iou={combined['topk_iou_mean']:.4f}",
+                flush=True,
+            )
 
     methods_summary: dict[str, dict[str, object]] = {}
     for method_name, records in per_method.items():
@@ -213,6 +228,7 @@ def main() -> None:
     }
     with open(output_dir / "stability_metrics.json", "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
+    print(f"Saved stability metrics to {output_dir / 'stability_metrics.json'}", flush=True)
 
 
 if __name__ == "__main__":

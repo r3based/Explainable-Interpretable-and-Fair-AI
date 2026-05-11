@@ -115,6 +115,8 @@ def evaluate_clean(
     device: str | torch.device,
     amp: bool = True,
     max_batches: int | None = None,
+    log_every: int = 0,
+    phase_name: str = "clean_eval",
 ) -> dict[str, Any]:
     device = torch.device(device)
     model.eval()
@@ -140,6 +142,15 @@ def evaluate_clean(
         correct += float((preds == labels).sum().item())
         loss_sum += float(loss.item()) * batch_size
         confidence_sum += float(confs.sum().item())
+        if log_every > 0 and (batch_idx + 1) % int(log_every) == 0:
+            processed = batch_idx + 1
+            total_batches = len(loader) if max_batches is None else min(int(max_batches), len(loader))
+            print(
+                f"{phase_name} batch={processed:04d}/{total_batches:04d} "
+                f"loss={loss_sum / max(total, 1):.4f} "
+                f"acc={correct / max(total, 1):.4f}",
+                flush=True,
+            )
 
     elapsed = time.perf_counter() - started
     return {
@@ -158,6 +169,8 @@ def evaluate_under_attack(
     attack_config: AdversarialAttackConfig,
     amp: bool = True,
     max_batches: int | None = None,
+    log_every: int = 0,
+    phase_name: str | None = None,
 ) -> dict[str, Any]:
     device = torch.device(device)
     model.eval()
@@ -193,6 +206,16 @@ def evaluate_under_attack(
         robust_correct += float((robust_preds == labels).sum().item())
         clean_confidence_sum += float(clean_confs.sum().item())
         robust_confidence_sum += float(robust_confs.sum().item())
+        if log_every > 0 and (batch_idx + 1) % int(log_every) == 0:
+            processed = batch_idx + 1
+            total_batches = len(loader) if max_batches is None else min(int(max_batches), len(loader))
+            label = phase_name or f"{attack_config.method}_eval"
+            print(
+                f"{label} batch={processed:04d}/{total_batches:04d} "
+                f"clean_acc={clean_correct / max(total, 1):.4f} "
+                f"robust_acc={robust_correct / max(total, 1):.4f}",
+                flush=True,
+            )
 
     elapsed = time.perf_counter() - started
     return {

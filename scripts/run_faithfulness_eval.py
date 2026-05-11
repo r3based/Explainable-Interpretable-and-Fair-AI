@@ -46,6 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--model-name", type=str, default="vit_base_patch16_224")
     parser.add_argument("--allow-random-init", action="store_true")
+    parser.add_argument("--log-every", type=int, default=1)
     return parser.parse_args()
 
 
@@ -83,6 +84,11 @@ def _counterfactual_heatmap(model, image_tensor: torch.Tensor, args: argparse.Na
 def main() -> None:
     args = parse_args()
     set_seed(args.seed)
+    print(
+        f"Running faithfulness eval: model={args.model_kind}, methods={args.methods}, "
+        f"subset_size={args.subset_size}, device={args.device}",
+        flush=True,
+    )
 
     output_dir = Path(args.output_dir)
     raw_curve_dir = output_dir / "raw_curves"
@@ -133,12 +139,14 @@ def main() -> None:
 
     per_method: dict[str, list[dict[str, object]]] = {method: [] for method in args.methods}
 
-    for dataset_index in selected_indices:
+    for image_pos, dataset_index in enumerate(selected_indices, start=1):
+        print(f"Faithfulness image {image_pos}/{len(selected_indices)}: dataset_index={dataset_index}", flush=True)
         image_tensor, true_label = dataset[dataset_index]
         class_idx, confidence = model.predict(image_tensor.unsqueeze(0))
 
         method_outputs: dict[str, object] = {}
         if lime_explainer is not None:
+            print(f"  generating LIME for image {image_pos}", flush=True)
             method_outputs["lime"] = lime_explainer.explain(
                 image=tensor_to_numpy(image_tensor),
                 predict_fn=predict_fn,
@@ -146,6 +154,7 @@ def main() -> None:
                 device=args.device,
             )
         if shap_explainer is not None:
+            print(f"  generating SHAP for image {image_pos}", flush=True)
             method_outputs["shap"] = shap_explainer.explain(
                 image=image_tensor,
                 predict_fn=predict_fn,
@@ -153,9 +162,11 @@ def main() -> None:
                 device=args.device,
             )
         if "counterfactual" in args.methods:
+            print(f"  generating counterfactual for image {image_pos}", flush=True)
             method_outputs["counterfactual"] = _counterfactual_heatmap(model=model, image_tensor=image_tensor, args=args)
 
         for method_name, method_output in method_outputs.items():
+            print(f"  scoring {method_name}: deletion/insertion curves", flush=True)
             deletion = deletion_curve(
                 image=image_tensor,
                 heatmap=method_output,
@@ -191,6 +202,11 @@ def main() -> None:
             method_curve_dir.mkdir(parents=True, exist_ok=True)
             with open(method_curve_dir / f"image_{int(dataset_index):05d}.json", "w", encoding="utf-8") as handle:
                 json.dump(record, handle, indent=2)
+            print(
+                f"  {method_name} done: deletion_auc={record['deletion_auc']:.4f}, "
+                f"insertion_auc={record['insertion_auc']:.4f}",
+                flush=True,
+            )
 
     methods_summary: dict[str, dict[str, object]] = {}
     for method_name, records in per_method.items():
@@ -214,6 +230,7 @@ def main() -> None:
     }
     with open(output_dir / "faithfulness_metrics.json", "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
+    print(f"Saved faithfulness metrics to {output_dir / 'faithfulness_metrics.json'}", flush=True)
 
 
 if __name__ == "__main__":

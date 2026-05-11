@@ -46,6 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--model-name", type=str, default="vit_base_patch16_224")
     parser.add_argument("--allow-random-init", action="store_true")
+    parser.add_argument("--log-progress", action="store_true")
     return parser.parse_args()
 
 
@@ -77,6 +78,11 @@ def _counterfactual_callable(model, image_tensor: torch.Tensor, args: argparse.N
 def main() -> None:
     args = parse_args()
     set_seed(args.seed)
+    print(
+        f"Running runtime eval: model={args.model_kind}, methods={args.methods}, "
+        f"subset_size={args.subset_size}, repeats={args.repeats}, warmup={args.warmup}, device={args.device}",
+        flush=True,
+    )
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -125,7 +131,8 @@ def main() -> None:
         )
 
     method_callables: dict[str, list] = {method: [] for method in args.methods}
-    for dataset_index in selected_indices:
+    for image_pos, dataset_index in enumerate(selected_indices, start=1):
+        print(f"Preparing runtime callable {image_pos}/{len(selected_indices)}: dataset_index={dataset_index}", flush=True)
         image_tensor, _ = dataset[dataset_index]
         class_idx, _ = model.predict(image_tensor.unsqueeze(0))
 
@@ -156,6 +163,7 @@ def main() -> None:
         warmup=args.warmup,
         device=args.device,
         measure_peak_memory=True,
+        log_progress=args.log_progress,
     )
 
     payload = {
@@ -167,6 +175,7 @@ def main() -> None:
     }
     with open(output_dir / "runtime_metrics.json", "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
+    print(f"Saved runtime metrics to {output_dir / 'runtime_metrics.json'}", flush=True)
 
 
 if __name__ == "__main__":
