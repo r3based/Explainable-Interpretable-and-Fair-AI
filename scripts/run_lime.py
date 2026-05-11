@@ -16,9 +16,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+import bootstrap  # noqa: F401
+
 from src.data.cifar10 import CIFAR10_CLASSES, get_cifar10
 from src.explainers.lime_explainer import LIMEImageExplainer
-from src.model.vit import ViTWrapper
+from src.model import load_project_model
 from src.utils import set_seed
 from src.visualization.heatmap import plot_lime_result, tensor_to_numpy
 
@@ -35,6 +37,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", type=str, default="artifacts/lime")
     p.add_argument("--data-dir",   type=str, default="data")
     p.add_argument("--device",     type=str, default=None)
+    p.add_argument("--model-kind", type=str, default="anchor", choices=["anchor", "finetuned", "robust"])
+    p.add_argument("--checkpoint", type=str, default=None)
+    p.add_argument("--model-name", type=str, default="vit_base_patch16_224")
+    p.add_argument("--allow-random-init", action="store_true")
     return p.parse_args()
 
 
@@ -60,8 +66,14 @@ def main() -> None:
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    log.info("Loading ViT-B/16 …")
-    model     = ViTWrapper(device=args.device)
+    log.info("Loading model: %s", args.model_kind)
+    model = load_project_model(
+        model_kind=args.model_kind,
+        checkpoint=args.checkpoint,
+        device=args.device,
+        model_name=args.model_name,
+        require_checkpoint=args.model_kind != "anchor" and not args.allow_random_init,
+    )
     device    = model.device
     predict_fn = model.as_black_box()
     log.info("Device: %s", device)
@@ -120,7 +132,15 @@ def main() -> None:
         })
 
     with open(out_dir / "lime_summary.json", "w") as f:
-        json.dump({"args": vars(args), "results": summary}, f, indent=2)
+        json.dump(
+            {
+                "args": vars(args),
+                "model": {"kind": args.model_kind, "checkpoint": args.checkpoint, "model_name": args.model_name},
+                "results": summary,
+            },
+            f,
+            indent=2,
+        )
     log.info("Done — %d explanations → %s", len(summary), out_dir)
 
 

@@ -1,6 +1,8 @@
 # datasets
 /data/
 outputs/
+artifacts/checkpoints/
+artifacts/training/
 
 # python cache
 __pycache__/

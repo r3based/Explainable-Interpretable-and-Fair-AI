@@ -13,13 +13,15 @@ from pathlib import Path
 
 import torch
 
+import bootstrap  # noqa: F401
+
 from src.counterfactuals import (
     CounterfactualConfig,
-    GradientCounterfactualGenerator,
+    generate_counterfactual_for_normalized_input,
     save_counterfactual_panel,
 )
-from src.data.cifar10 import get_cifar10
-from src.model.vit_cf_adapter import ViTCounterfactualAdapter
+from src.data.cifar10 import VIT_MEAN, VIT_STD, get_cifar10
+from src.model import load_project_model
 from src.utils import set_seed
 
 
@@ -35,6 +37,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lambda-l2",    type=float, default=0.01)
     parser.add_argument("--lambda-tv",    type=float, default=0.001)
     parser.add_argument("--seed",         type=int,   default=42)
+    parser.add_argument("--device",       type=str,   default="auto")
+    parser.add_argument("--model-kind",   type=str,   default="anchor", choices=["anchor", "finetuned", "robust"])
+    parser.add_argument("--checkpoint",   type=str,   default=None)
+    parser.add_argument("--model-name",   type=str,   default="vit_base_patch16_224")
+    parser.add_argument("--allow-random-init", action="store_true")
     return parser.parse_args()
 
 
@@ -42,13 +49,21 @@ def main() -> None:
     args = parse_args()
     set_seed(args.seed)
 
-    device    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else ("cpu" if args.device == "auto" else args.device))
     save_root = Path(args.save_dir)
     save_root.mkdir(parents=True, exist_ok=True)
 
-    dataset   = get_cifar10(root=args.root, train=args.train)
-    model     = ViTCounterfactualAdapter(device)
-    generator = GradientCounterfactualGenerator(model)
+    dataset = get_cifar10(root=args.root, train=args.train)
+    model = load_project_model(
+        model_kind=args.model_kind,
+        checkpoint=args.checkpoint,
+        device=device,
+        model_name=args.model_name,
+        require_checkpoint=args.model_kind != "anchor" and not args.allow_random_init,
+    )
+    classifier = model.as_cifar10_classifier()
+    mean = torch.tensor(VIT_MEAN, dtype=torch.float32)
+    std = torch.tensor(VIT_STD, dtype=torch.float32)
 
     config = CounterfactualConfig(
         steps=args.steps,
@@ -61,8 +76,14 @@ def main() -> None:
 
     for idx in range(args.start_index, args.start_index + args.num_samples):
         image, label = dataset[idx]
-        image  = image.unsqueeze(0).to(device)
-        result = generator.generate(image, config=config)
+        image = image.unsqueeze(0).to(device)
+        result = generate_counterfactual_for_normalized_input(
+            model=classifier,
+            normalized_image=image,
+            mean=mean,
+            std=std,
+            config=config,
+        )
 
         sample_dir = save_root / f"sample_{idx:04d}"
         sample_dir.mkdir(parents=True, exist_ok=True)

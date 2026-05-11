@@ -19,14 +19,26 @@ VIT_TRANSFORM = transforms.Compose([
     transforms.Normalize(mean=VIT_MEAN, std=VIT_STD),
 ])
 
+VIT_TRAIN_TRANSFORM = transforms.Compose([
+    transforms.Resize(224),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandAugment(num_ops=2, magnitude=9),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=VIT_MEAN, std=VIT_STD),
+])
+
 VIT_TRANSFORM_UNNORM = transforms.Compose([
     transforms.Resize(224),
     transforms.ToTensor(),
 ])
 
 
-def get_cifar10(root: str = "./data", train: bool = False) -> datasets.CIFAR10:
-    return datasets.CIFAR10(root=root, train=train, download=True, transform=VIT_TRANSFORM)
+def get_cifar10(
+    root: str = "./data",
+    train: bool = False,
+    transform: transforms.Compose | None = None,
+) -> datasets.CIFAR10:
+    return datasets.CIFAR10(root=root, train=train, download=True, transform=transform or VIT_TRANSFORM)
 
 
 def get_loader(
@@ -38,7 +50,7 @@ def get_loader(
     subset_size: int | None = None,
     seed: int = 42,
 ) -> DataLoader:
-    dataset = get_cifar10(root=root, train=train)
+    dataset = get_cifar10(root=root, train=train, transform=VIT_TRAIN_TRANSFORM if train else VIT_TRANSFORM)
     if subset_size is not None:
         rng = torch.Generator().manual_seed(seed)
         indices = torch.randperm(len(dataset), generator=rng)[:subset_size].tolist()

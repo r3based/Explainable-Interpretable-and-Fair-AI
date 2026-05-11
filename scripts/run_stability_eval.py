@@ -7,13 +7,15 @@ from pathlib import Path
 import numpy as np
 import torch
 
+import bootstrap  # noqa: F401
+
 from src.counterfactuals import CounterfactualConfig, generate_counterfactual_for_normalized_input
 from src.data import DEFAULT_REFERENCE_DIR, get_cifar10, load_or_build_reference_set
 from src.data.cifar10 import VIT_MEAN, VIT_STD
 from src.evaluation.stability import aggregate_stability_scores, stability_under_noise, stability_under_seed_variation
 from src.explainers.lime_explainer import LIMEImageExplainer
 from src.explainers.shap_explainer import SHAPImageExplainer
-from src.model.vit import ViTWrapper
+from src.model import load_project_model
 from src.utils import set_seed
 from src.visualization.heatmap import tensor_to_numpy
 
@@ -42,6 +44,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cf-step-size", type=float, default=0.03)
     parser.add_argument("--cf-lambda-l2", type=float, default=1e-2)
     parser.add_argument("--cf-lambda-tv", type=float, default=1e-4)
+    parser.add_argument("--model-kind", type=str, default="anchor", choices=["anchor", "finetuned", "robust"])
+    parser.add_argument("--checkpoint", type=str, default=None)
+    parser.add_argument("--model-name", type=str, default="vit_base_patch16_224")
+    parser.add_argument("--allow-random-init", action="store_true")
     return parser.parse_args()
 
 
@@ -51,7 +57,7 @@ def _select_subset_indices(dataset_len: int, subset_size: int, seed: int) -> lis
     return [int(index) for index in rng.choice(dataset_len, size=size, replace=False).tolist()]
 
 
-def _counterfactual_result(model: ViTWrapper, image_tensor: torch.Tensor, args: argparse.Namespace) -> object:
+def _counterfactual_result(model, image_tensor: torch.Tensor, args: argparse.Namespace) -> object:
     config = CounterfactualConfig(
         steps=args.cf_steps,
         step_size=args.cf_step_size,
@@ -77,7 +83,13 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    model = ViTWrapper(device=args.device)
+    model = load_project_model(
+        model_kind=args.model_kind,
+        checkpoint=args.checkpoint,
+        device=args.device,
+        model_name=args.model_name,
+        require_checkpoint=args.model_kind != "anchor" and not args.allow_random_init,
+    )
     predict_fn = model.as_black_box()
     dataset = get_cifar10(root=args.data_dir, train=False)
     selected_indices = _select_subset_indices(len(dataset), args.subset_size, args.seed)
@@ -194,6 +206,7 @@ def main() -> None:
 
     payload = {
         "config": vars(args),
+        "model": {"kind": args.model_kind, "checkpoint": args.checkpoint, "model_name": args.model_name},
         "selected_indices": selected_indices,
         "reference_manifest_path": str(reference_manifest_path) if reference_manifest_path is not None else None,
         "methods": methods_summary,

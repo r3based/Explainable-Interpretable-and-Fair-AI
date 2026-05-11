@@ -7,9 +7,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+import bootstrap  # noqa: F401
+
 from src.data import CIFAR10_CLASSES, DEFAULT_REFERENCE_DIR, get_cifar10, load_or_build_reference_set, summarize_reference_set
 from src.explainers.shap_explainer import SHAPImageExplainer
-from src.model.vit import ViTWrapper
+from src.model import load_project_model
 from src.utils import set_seed
 from src.visualization.heatmap import overlay_heatmap, tensor_to_numpy
 
@@ -27,6 +29,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nsamples", type=int, default=128)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--reuse-reference-set", action="store_true")
+    parser.add_argument("--model-kind", type=str, default="anchor", choices=["anchor", "finetuned", "robust"])
+    parser.add_argument("--checkpoint", type=str, default=None)
+    parser.add_argument("--model-name", type=str, default="vit_base_patch16_224")
+    parser.add_argument("--allow-random-init", action="store_true")
     return parser.parse_args()
 
 
@@ -64,7 +70,13 @@ def main() -> None:
         DEFAULT_REFERENCE_DIR / f"cifar10_train_{args.background_strategy}_{args.background_size}_seed{args.seed}.json"
     )
 
-    model = ViTWrapper(device=args.device)
+    model = load_project_model(
+        model_kind=args.model_kind,
+        checkpoint=args.checkpoint,
+        device=args.device,
+        model_name=args.model_name,
+        require_checkpoint=args.model_kind != "anchor" and not args.allow_random_init,
+    )
     predict_fn = model.as_black_box()
 
     dataset = get_cifar10(root=args.data_dir, train=False)
@@ -125,6 +137,7 @@ def main() -> None:
 
     payload = {
         "config": vars(args),
+        "model": {"kind": args.model_kind, "checkpoint": args.checkpoint, "model_name": args.model_name},
         "reference_manifest_path": str(manifest_path),
         "reference_manifest": summarize_reference_set(manifest),
         "selected_indices": selected_indices,

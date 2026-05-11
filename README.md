@@ -5,6 +5,49 @@
 
 ---
 
+## Updated Project Target
+
+**Robustness and Interpretability of Vision Transformers: Fine-tuning, Adversarial Defense, and LIME/SHAP Analysis**
+
+The project now treats LIME and SHAP as attribution-based explanation methods, while counterfactual/adversarial perturbations are used as a robustness probe. The intended experimental comparison is:
+
+| Model variant | Purpose |
+|---|---|
+| `anchor` | Original baseline: pretrained ImageNet ViT mapped to CIFAR-10 anchor classes |
+| `finetuned` | ViT with a real CIFAR-10 classification head |
+| `robust` | Fine-tuned ViT trained with adversarial examples |
+
+The main question is: **How do fine-tuning and adversarial defense affect the robustness and explainability of a Vision Transformer on CIFAR-10?**
+
+Recommended GPU workflow:
+
+```bash
+python scripts/train_vit_cifar.py \
+  --device cuda --epochs 10 --batch-size 64 \
+  --run-name finetuned_vit
+
+python scripts/train_robust_vit_cifar.py \
+  --device cuda --checkpoint artifacts/checkpoints/finetuned_vit_best.pt \
+  --epochs 5 --batch-size 32 --attack fgsm \
+  --run-name robust_vit
+
+python scripts/evaluate_classifier.py \
+  --model-kind finetuned --checkpoint artifacts/checkpoints/finetuned_vit_best.pt \
+  --device cuda
+
+python scripts/run_counterfactual_robustness_eval.py \
+  --model-kind robust --checkpoint artifacts/checkpoints/robust_vit_best.pt \
+  --device cuda --subset-size 20
+
+python scripts/run_shap.py \
+  --model-kind robust --checkpoint artifacts/checkpoints/robust_vit_best.pt \
+  --device cuda --subset-size 5
+```
+
+For A100-class machines, start with ViT-B/16 and AMP enabled. If memory is constrained, lower `--batch-size`; if runtime is constrained, use `--max-train-batches` for a smoke test.
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
