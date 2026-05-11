@@ -14,9 +14,11 @@ def create_cifar10_loaders(
     eval_batch_size: int | None = None,
     num_workers: int = 4,
     device: str | torch.device = "cpu",
+    train_augment: bool = True,
 ) -> tuple[DataLoader, DataLoader]:
     device = torch.device(device)
-    train_dataset = get_cifar10(root=data_dir, train=True, transform=VIT_TRAIN_TRANSFORM)
+    train_transform = VIT_TRAIN_TRANSFORM if train_augment else VIT_TRANSFORM
+    train_dataset = get_cifar10(root=data_dir, train=True, transform=train_transform)
     test_dataset = get_cifar10(root=data_dir, train=False, transform=VIT_TRANSFORM)
     pin_memory = device.type == "cuda"
 

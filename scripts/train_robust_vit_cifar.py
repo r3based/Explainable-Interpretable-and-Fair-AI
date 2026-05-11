@@ -31,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--eval-batch-size", type=int, default=None)
     parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--no-train-augment", action="store_true")
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--weight-decay", type=float, default=0.05)
     parser.add_argument("--scheduler", type=str, default="cosine", choices=["none", "cosine"])
@@ -46,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--adversarial-weight", type=float, default=1.0)
     parser.add_argument("--max-train-batches", type=int, default=None)
     parser.add_argument("--max-val-batches", type=int, default=None)
+    parser.add_argument("--log-every", type=int, default=25)
     parser.add_argument("--output-dir", type=str, default="artifacts/training")
     parser.add_argument("--checkpoint-dir", type=str, default="artifacts/checkpoints")
     parser.add_argument("--run-name", type=str, default="robust_vit")
@@ -76,6 +78,7 @@ def main() -> None:
         eval_batch_size=args.eval_batch_size,
         num_workers=args.num_workers,
         device=device,
+        train_augment=not args.no_train_augment,
     )
 
     if args.checkpoint:
@@ -134,6 +137,7 @@ def main() -> None:
             attack_config=attack_config,
             adversarial_weight=args.adversarial_weight,
             max_batches=args.max_train_batches,
+            log_every=args.log_every,
         )
         clean_metrics = evaluate_clean(
             model=model,

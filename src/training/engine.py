@@ -37,6 +37,7 @@ def train_one_epoch(
     attack_config: AdversarialAttackConfig | None = None,
     adversarial_weight: float = 1.0,
     max_batches: int | None = None,
+    log_every: int = 0,
 ) -> dict[str, Any]:
     """Run one training epoch, optionally with adversarial examples."""
     device = torch.device(device)
@@ -84,6 +85,16 @@ def train_one_epoch(
         clean_correct += float((clean_logits.detach().argmax(dim=1) == labels).sum().item())
         if adv_logits is not None:
             adv_correct += float((adv_logits.detach().argmax(dim=1) == labels).sum().item())
+
+        if log_every > 0 and (batch_idx + 1) % int(log_every) == 0:
+            processed = batch_idx + 1
+            total_batches = len(loader) if max_batches is None else min(int(max_batches), len(loader))
+            print(
+                f"epoch={epoch:03d} batch={processed:04d}/{total_batches:04d} "
+                f"loss={loss_sum / max(total, 1):.4f} "
+                f"clean_acc={clean_correct / max(total, 1):.4f}",
+                flush=True,
+            )
 
     elapsed = time.perf_counter() - started
     return {
