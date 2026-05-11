@@ -46,10 +46,13 @@ def parse_args() -> argparse.Namespace:
 
 def _pick_indices(dataset, n_images: int, seed: int) -> list[int]:
     """One image per class, up to n_images total."""
-    rng      = np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
     by_class: dict[int, list[int]] = {c: [] for c in range(10)}
-    for idx, (_, label) in enumerate(dataset):
-        by_class[label].append(idx)
+    targets = getattr(dataset, "targets", None)
+    if targets is None:
+        targets = [int(dataset[idx][1]) for idx in range(len(dataset))]
+    for idx, label in enumerate(targets):
+        by_class[int(label)].append(int(idx))
 
     selected: list[int] = []
     n_per_class = max(1, n_images // 10)
@@ -125,9 +128,9 @@ def main() -> None:
             "index":      int(ds_idx),
             "true_class": true_name,
             "pred_class": class_name,
-            "confidence": round(confidence, 4),
-            "runtime_s":  round(result.runtime_seconds, 2),
-            "n_segments": result.extra["n_segments_actual"],
+            "confidence": round(float(confidence), 4),
+            "runtime_s":  round(float(result.runtime_seconds), 2),
+            "n_segments": int(result.extra["n_segments_actual"]),
             "figure":     str(fig_path),
         })
 
